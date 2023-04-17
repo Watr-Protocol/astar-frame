@@ -65,6 +65,7 @@ pub enum Action {
     BalanceOf = "balanceOf(address)",
     Allowance = "allowance(address,address)",
     Transfer = "transfer(address,uint256)",
+    ForceTransfer = "forceTransfer(address,uint256)",
     Approve = "approve(address,uint256)",
     TransferFrom = "transferFrom(address,address,uint256)",
     Name = "name()",
@@ -413,6 +414,47 @@ where
             .log3(
                 SELECTOR_LOG_TRANSFER,
                 from,
+                to,
+                EvmDataWriter::new().write(amount).build(),
+            )
+            .record(handle)?;
+
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
+    }
+
+    fn force_transfer(
+        asset_id: AssetIdOf<Runtime, Instance>,
+        handle: &mut impl PrecompileHandle,
+    ) -> EvmResult<PrecompileOutput> {
+        handle.record_log_costs_manual(3, 32)?;
+
+        let mut input = handle.read_input()?;
+        input.expect_arguments(2)?;
+
+        let to: H160 = input.read::<Address>()?.into();
+        let amount = input.read::<BalanceOf<Runtime, Instance>>()?;
+
+        // Build call with origin.
+        {
+            let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
+            let to = Runtime::AddressMapping::into_account_id(to);
+
+            // Dispatch call (if enough gas).
+            RuntimeHelper::<Runtime>::try_dispatch(
+                handle,
+                Some(origin).into(),
+                pallet_assets::Call::<Runtime, Instance>::force_transfer {
+                    id: asset_id,
+                    target: Runtime::Lookup::unlookup(to),
+                    amount,
+                },
+            )?;
+        }
+
+        LogsBuilder::new(handle.context().address)
+            .log3(
+                SELECTOR_LOG_TRANSFER,
+                handle.context().caller,
                 to,
                 EvmDataWriter::new().write(amount).build(),
             )
