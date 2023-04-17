@@ -65,7 +65,7 @@ pub enum Action {
     BalanceOf = "balanceOf(address)",
     Allowance = "allowance(address,address)",
     Transfer = "transfer(address,uint256)",
-    ForceTransfer = "forceTransfer(address,uint256)",
+    ForceTransfer = "forceTransfer(address,address,uint256)",
     Approve = "approve(address,uint256)",
     TransferFrom = "transferFrom(address,address,uint256)",
     Name = "name()",
@@ -159,6 +159,7 @@ where
                         Action::Approve => Self::approve(asset_id, handle),
                         Action::Transfer => Self::transfer(asset_id, handle),
                         Action::TransferFrom => Self::transfer_from(asset_id, handle),
+                        Action::ForceTransfer => Self::force_transfer(asset_id, handle),
                         Action::Name => Self::name(asset_id, handle),
                         Action::Symbol => Self::symbol(asset_id, handle),
                         Action::Decimals => Self::decimals(asset_id, handle),
@@ -431,13 +432,15 @@ where
         let mut input = handle.read_input()?;
         input.expect_arguments(2)?;
 
-        let to: H160 = input.read::<Address>()?.into();
+        let source: H160 = input.read::<Address>()?.into();
+        let dest: H160 = input.read::<Address>()?.into();
         let amount = input.read::<BalanceOf<Runtime, Instance>>()?;
 
         // Build call with origin.
         {
             let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
-            let to = Runtime::AddressMapping::into_account_id(to);
+            let source = Runtime::AddressMapping::into_account_id(source);
+            let dest = Runtime::AddressMapping::into_account_id(dest);
 
             // Dispatch call (if enough gas).
             RuntimeHelper::<Runtime>::try_dispatch(
@@ -445,7 +448,8 @@ where
                 Some(origin).into(),
                 pallet_assets::Call::<Runtime, Instance>::force_transfer {
                     id: asset_id,
-                    target: Runtime::Lookup::unlookup(to),
+                    source: Runtime::Lookup::unlookup(source),
+                    dest: Runtime::Lookup::unlookup(dest),
                     amount,
                 },
             )?;
@@ -455,7 +459,7 @@ where
             .log3(
                 SELECTOR_LOG_TRANSFER,
                 handle.context().caller,
-                to,
+                dest,
                 EvmDataWriter::new().write(amount).build(),
             )
             .record(handle)?;
