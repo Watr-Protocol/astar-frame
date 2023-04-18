@@ -144,6 +144,7 @@ where
                         Action::Approve
                         | Action::Transfer
                         | Action::TransferFrom
+                        | Action::ForceTransfer
                         | Action::Mint
                         | Action::Burn
                         | Action::Freeze
