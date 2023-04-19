@@ -144,8 +144,15 @@ where
                         Action::Approve
                         | Action::Transfer
                         | Action::TransferFrom
+                        | Action::ForceTransfer
                         | Action::Mint
-                        | Action::Burn => FunctionModifier::NonPayable,
+                        | Action::Burn
+                        | Action::Freeze
+                        | Action::Thaw
+                        | Action::FreezeAsset
+                        | Action::ThawAsset
+                        | Action::TransferOwnership
+                        | Action::SetTeam => FunctionModifier::NonPayable,
                         _ => FunctionModifier::View,
                     }) {
                         return Some(Err(err));
