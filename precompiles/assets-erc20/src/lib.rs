@@ -37,7 +37,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(test, feature(assert_matches))]
 
-use fp_evm::{PrecompileHandle, PrecompileOutput};
+use fp_evm::{IsPrecompileResult, PrecompileHandle, PrecompileOutput};
 use frame_support::traits::fungibles::approvals::Inspect as ApprovalInspect;
 use frame_support::traits::fungibles::metadata::Inspect as MetadataInspect;
 use frame_support::traits::fungibles::Inspect;
@@ -185,7 +185,7 @@ where
         None
     }
 
-    fn is_precompile(&self, address: H160) -> bool {
+    fn is_precompile(&self, address: H160, _remaining_gas: u64) -> IsPrecompileResult {
         if let Some(asset_id) = Runtime::address_to_asset_id(address) {
             // If the assetId has non-zero supply
             // "total_supply" returns both 0 if the assetId does not exist or if the supply is 0
@@ -194,9 +194,22 @@ where
             // storage we can use another function for this, like check_asset_existence.
             // The other options is to check the asset existence in pallet-asset-manager, but
             // this makes the precompiles dependent on such a pallet, which is not ideal
-            !pallet_assets::Pallet::<Runtime, Instance>::total_supply(asset_id).is_zero()
+            if !pallet_assets::Pallet::<Runtime, Instance>::total_supply(asset_id).is_zero() {
+                IsPrecompileResult::Answer {
+                    is_precompile: true,
+                    extra_cost: 0,
+                }
+            } else {
+                IsPrecompileResult::Answer {
+                    is_precompile: false,
+                    extra_cost: 0,
+                }
+            }
         } else {
-            false
+            IsPrecompileResult::Answer {
+                is_precompile: false,
+                extra_cost: 0,
+            }
         }
     }
 }
