@@ -83,6 +83,7 @@ pub enum Action {
     BalanceOf = "balanceOf(address)",
     Allowance = "allowance(address,address)",
     Transfer = "transfer(address,uint256)",
+    ForceTransfer = "forceTransfer(address,address,uint256)",
     Approve = "approve(address,uint256)",
     TransferFrom = "transferFrom(address,address,uint256)",
     Name = "name()",
@@ -91,6 +92,12 @@ pub enum Action {
     MinimumBalance = "minimumBalance()",
     Mint = "mint(address,uint256)",
     Burn = "burn(address,uint256)",
+    Freeze = "freeze(address)",
+    Thaw = "thaw(address)",
+    FreezeAsset = "freezeAsset()",
+    ThawAsset = "thawAsset()",
+    TransferOwnership = "transferOwnership(address)",
+    SetTeam = "setTeam(address,address,address)",
 }
 
 /// This trait ensure we can convert EVM address to AssetIds
@@ -155,8 +162,15 @@ where
                         Action::Approve
                         | Action::Transfer
                         | Action::TransferFrom
+                        | Action::ForceTransfer
                         | Action::Mint
-                        | Action::Burn => FunctionModifier::NonPayable,
+                        | Action::Burn
+                        | Action::Freeze
+                        | Action::Thaw
+                        | Action::FreezeAsset
+                        | Action::ThawAsset
+                        | Action::TransferOwnership
+                        | Action::SetTeam => FunctionModifier::NonPayable,
                         _ => FunctionModifier::View,
                     }) {
                         return Some(Err(err));
@@ -170,6 +184,7 @@ where
                         Action::Approve => Self::approve(asset_id, handle),
                         Action::Transfer => Self::transfer(asset_id, handle),
                         Action::TransferFrom => Self::transfer_from(asset_id, handle),
+                        Action::ForceTransfer => Self::force_transfer(asset_id, handle),
                         Action::Name => Self::name(asset_id, handle),
                         Action::Symbol => Self::symbol(asset_id, handle),
                         Action::Decimals => Self::decimals(asset_id, handle),
@@ -177,6 +192,12 @@ where
                         Action::MinimumBalance => Self::minimum_balance(asset_id, handle),
                         Action::Mint => Self::mint(asset_id, handle),
                         Action::Burn => Self::burn(asset_id, handle),
+                        Action::Freeze => Self::freeze(asset_id, handle),
+                        Action::Thaw => Self::thaw(asset_id, handle),
+                        Action::FreezeAsset => Self::freeze_asset(asset_id, handle),
+                        Action::ThawAsset => Self::thaw_asset(asset_id, handle),
+                        Action::TransferOwnership => Self::transfer_ownership(asset_id, handle),
+                        Action::SetTeam => Self::set_team(asset_id, handle),
                     }
                 };
                 return Some(result);
@@ -440,6 +461,50 @@ where
         Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
 
+    fn force_transfer(
+        asset_id: AssetIdOf<Runtime, Instance>,
+        handle: &mut impl PrecompileHandle,
+    ) -> EvmResult<PrecompileOutput> {
+        handle.record_log_costs_manual(3, 32)?;
+
+        let mut input = handle.read_input()?;
+        input.expect_arguments(2)?;
+
+        let source: H160 = input.read::<Address>()?.into();
+        let dest: H160 = input.read::<Address>()?.into();
+        let amount = input.read::<BalanceOf<Runtime, Instance>>()?;
+
+        // Build call with origin.
+        {
+            let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
+            let source = Runtime::AddressMapping::into_account_id(source);
+            let dest = Runtime::AddressMapping::into_account_id(dest);
+
+            // Dispatch call (if enough gas).
+            RuntimeHelper::<Runtime>::try_dispatch(
+                handle,
+                Some(origin).into(),
+                pallet_assets::Call::<Runtime, Instance>::force_transfer {
+                    id: asset_id,
+                    source: Runtime::Lookup::unlookup(source),
+                    dest: Runtime::Lookup::unlookup(dest),
+                    amount,
+                },
+            )?;
+        }
+
+        LogsBuilder::new(handle.context().address)
+            .log3(
+                SELECTOR_LOG_TRANSFER,
+                handle.context().caller,
+                dest,
+                EvmDataWriter::new().write(amount).build(),
+            )
+            .record(handle)?;
+
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
+    }
+
     fn name(
         asset_id: AssetIdOf<Runtime, Instance>,
         handle: &mut impl PrecompileHandle,
@@ -556,4 +621,162 @@ where
 
         Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
+
+	fn freeze(
+		asset_id: AssetIdOf<Runtime, Instance>,
+		handle: &mut impl PrecompileHandle,
+	) -> EvmResult<PrecompileOutput> {
+        let mut input = handle.read_input()?;
+        input.expect_arguments(1)?;
+
+        let account: H160 = input.read::<Address>()?.into();
+
+		// Build call with origin.
+		{
+			let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
+			let account = Runtime::AddressMapping::into_account_id(account);
+
+			// Dispatch call (if enough gas).
+			RuntimeHelper::<Runtime>::try_dispatch(
+				handle,
+				Some(origin).into(),
+				pallet_assets::Call::<Runtime, Instance>::freeze {
+					id: asset_id,
+					who: Runtime::Lookup::unlookup(account),
+				},
+			)?;
+		}
+
+		Ok(succeed(EvmDataWriter::new().write(true).build()))
+	}
+
+	fn thaw(
+		asset_id: AssetIdOf<Runtime, Instance>,
+		handle: &mut impl PrecompileHandle,
+	) -> EvmResult<PrecompileOutput> {
+        let mut input = handle.read_input()?;
+        input.expect_arguments(1)?;
+
+        let account: H160 = input.read::<Address>()?.into();
+
+		// Build call with origin.
+		{
+			let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
+			let account = Runtime::AddressMapping::into_account_id(account);
+
+			// Dispatch call (if enough gas).
+			RuntimeHelper::<Runtime>::try_dispatch(
+				handle,
+				Some(origin).into(),
+				pallet_assets::Call::<Runtime, Instance>::thaw {
+					id: asset_id,
+					who: Runtime::Lookup::unlookup(account),
+				},
+			)?;
+		}
+
+		Ok(succeed(EvmDataWriter::new().write(true).build()))
+	}
+
+	fn freeze_asset(
+		asset_id: AssetIdOf<Runtime, Instance>,
+		handle: &mut impl PrecompileHandle,
+	) -> EvmResult<PrecompileOutput> {
+		// Build call with origin.
+		{
+			let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
+
+			// Dispatch call (if enough gas).
+			RuntimeHelper::<Runtime>::try_dispatch(
+				handle,
+				Some(origin).into(),
+				pallet_assets::Call::<Runtime, Instance>::freeze_asset { id: asset_id },
+			)?;
+		}
+
+		Ok(succeed(EvmDataWriter::new().write(true).build()))
+	}
+
+
+	fn thaw_asset(
+		asset_id: AssetIdOf<Runtime, Instance>,
+		handle: &mut impl PrecompileHandle,
+	) -> EvmResult<PrecompileOutput> {
+		// Build call with origin.
+		{
+			let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
+
+			// Dispatch call (if enough gas).
+			RuntimeHelper::<Runtime>::try_dispatch(
+				handle,
+				Some(origin).into(),
+				pallet_assets::Call::<Runtime, Instance>::thaw_asset { id: asset_id },
+			)?;
+		}
+
+		// Build output.
+		Ok(succeed(EvmDataWriter::new().write(true).build()))
+	}
+
+	fn transfer_ownership(
+		asset_id: AssetIdOf<Runtime, Instance>,
+		handle: &mut impl PrecompileHandle,
+	) -> EvmResult<PrecompileOutput> {
+        let mut input = handle.read_input()?;
+        input.expect_arguments(1)?;
+
+        let owner: H160 = input.read::<Address>()?.into();
+
+		// Build call with origin.
+		{
+			let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
+			let owner = Runtime::AddressMapping::into_account_id(owner);
+
+			// Dispatch call (if enough gas).
+			RuntimeHelper::<Runtime>::try_dispatch(
+				handle,
+				Some(origin).into(),
+				pallet_assets::Call::<Runtime, Instance>::transfer_ownership {
+					id: asset_id,
+					owner: Runtime::Lookup::unlookup(owner),
+				},
+			)?;
+		}
+
+		Ok(succeed(EvmDataWriter::new().write(true).build()))
+	}
+
+	fn set_team(
+		asset_id: AssetIdOf<Runtime, Instance>,
+		handle: &mut impl PrecompileHandle,
+	) -> EvmResult<PrecompileOutput> {
+        let mut input = handle.read_input()?;
+        input.expect_arguments(3)?;
+
+        let issuer: H160 = input.read::<Address>()?.into();
+        let admin: H160 = input.read::<Address>()?.into();
+        let freezer: H160 = input.read::<Address>()?.into();
+
+		// Build call with origin.
+		{
+			let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
+			let issuer = Runtime::AddressMapping::into_account_id(issuer);
+			let admin = Runtime::AddressMapping::into_account_id(admin);
+			let freezer = Runtime::AddressMapping::into_account_id(freezer);
+
+			// Dispatch call (if enough gas).
+			RuntimeHelper::<Runtime>::try_dispatch(
+				handle,
+				Some(origin).into(),
+				pallet_assets::Call::<Runtime, Instance>::set_team {
+					id: asset_id,
+					issuer: Runtime::Lookup::unlookup(issuer),
+					admin: Runtime::Lookup::unlookup(admin),
+					freezer: Runtime::Lookup::unlookup(freezer),
+				},
+			)?;
+		}
+
+		Ok(succeed(EvmDataWriter::new().write(true).build()))
+	}
 }
