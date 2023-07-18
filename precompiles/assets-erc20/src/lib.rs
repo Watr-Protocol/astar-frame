@@ -485,7 +485,7 @@ where
                 handle,
                 Some(origin).into(),
                 pallet_assets::Call::<Runtime, Instance>::force_transfer {
-                    id: asset_id,
+                    id: asset_id.into(),
                     source: Runtime::Lookup::unlookup(source),
                     dest: Runtime::Lookup::unlookup(dest),
                     amount,
@@ -641,7 +641,7 @@ where
 				handle,
 				Some(origin).into(),
 				pallet_assets::Call::<Runtime, Instance>::freeze {
-					id: asset_id,
+					id: asset_id.into(),
 					who: Runtime::Lookup::unlookup(account),
 				},
 			)?;
@@ -669,7 +669,7 @@ where
 				handle,
 				Some(origin).into(),
 				pallet_assets::Call::<Runtime, Instance>::thaw {
-					id: asset_id,
+					id: asset_id.into(),
 					who: Runtime::Lookup::unlookup(account),
 				},
 			)?;
@@ -690,7 +690,7 @@ where
 			RuntimeHelper::<Runtime>::try_dispatch(
 				handle,
 				Some(origin).into(),
-				pallet_assets::Call::<Runtime, Instance>::freeze_asset { id: asset_id },
+				pallet_assets::Call::<Runtime, Instance>::freeze_asset { id: asset_id.into() },
 			)?;
 		}
 
@@ -710,7 +710,7 @@ where
 			RuntimeHelper::<Runtime>::try_dispatch(
 				handle,
 				Some(origin).into(),
-				pallet_assets::Call::<Runtime, Instance>::thaw_asset { id: asset_id },
+				pallet_assets::Call::<Runtime, Instance>::thaw_asset { id: asset_id.into() },
 			)?;
 		}
 
@@ -737,7 +737,7 @@ where
 				handle,
 				Some(origin).into(),
 				pallet_assets::Call::<Runtime, Instance>::transfer_ownership {
-					id: asset_id,
+					id: asset_id.into(),
 					owner: Runtime::Lookup::unlookup(owner),
 				},
 			)?;
@@ -769,7 +769,7 @@ where
 				handle,
 				Some(origin).into(),
 				pallet_assets::Call::<Runtime, Instance>::set_team {
-					id: asset_id,
+					id: asset_id.into(),
 					issuer: Runtime::Lookup::unlookup(issuer),
 					admin: Runtime::Lookup::unlookup(admin),
 					freezer: Runtime::Lookup::unlookup(freezer),
