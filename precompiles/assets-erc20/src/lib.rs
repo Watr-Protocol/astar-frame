@@ -151,7 +151,9 @@ where
         if let Some(asset_id) = Runtime::address_to_asset_id(address) {
             // We check maybe_total_supply. This function returns Some if the asset exists,
             // which is all we care about at this point
-            if pallet_assets::Pallet::<Runtime, Instance>::maybe_total_supply(asset_id).is_some() {
+            if pallet_assets::Pallet::<Runtime, Instance>::maybe_total_supply(asset_id.clone())
+                .is_some()
+            {
                 let result = {
                     let selector = match handle.read_selector() {
                         Ok(selector) => selector,
@@ -326,14 +328,17 @@ where
             handle.record_cost(RuntimeHelper::<Runtime>::db_read_gas_cost())?;
 
             // If previous approval exists, we need to clean it
-            if pallet_assets::Pallet::<Runtime, Instance>::allowance(asset_id, &origin, &spender)
-                != 0u32.into()
+            if pallet_assets::Pallet::<Runtime, Instance>::allowance(
+                asset_id.clone(),
+                &origin,
+                &spender,
+            ) != 0u32.into()
             {
                 RuntimeHelper::<Runtime>::try_dispatch(
                     handle,
                     Some(origin.clone()).into(),
                     pallet_assets::Call::<Runtime, Instance>::cancel_approval {
-                        id: asset_id.into(),
+                        id: asset_id.clone().into(),
                         delegate: Runtime::Lookup::unlookup(spender.clone()),
                     },
                 )?;
@@ -622,134 +627,137 @@ where
         Ok(succeed(EvmDataWriter::new().write(true).build()))
     }
 
-	fn freeze(
-		asset_id: AssetIdOf<Runtime, Instance>,
-		handle: &mut impl PrecompileHandle,
-	) -> EvmResult<PrecompileOutput> {
+    fn freeze(
+        asset_id: AssetIdOf<Runtime, Instance>,
+        handle: &mut impl PrecompileHandle,
+    ) -> EvmResult<PrecompileOutput> {
         let mut input = handle.read_input()?;
         input.expect_arguments(1)?;
 
         let account: H160 = input.read::<Address>()?.into();
 
-		// Build call with origin.
-		{
-			let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
-			let account = Runtime::AddressMapping::into_account_id(account);
+        // Build call with origin.
+        {
+            let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
+            let account = Runtime::AddressMapping::into_account_id(account);
 
-			// Dispatch call (if enough gas).
-			RuntimeHelper::<Runtime>::try_dispatch(
-				handle,
-				Some(origin).into(),
-				pallet_assets::Call::<Runtime, Instance>::freeze {
-					id: asset_id.into(),
-					who: Runtime::Lookup::unlookup(account),
-				},
-			)?;
-		}
+            // Dispatch call (if enough gas).
+            RuntimeHelper::<Runtime>::try_dispatch(
+                handle,
+                Some(origin).into(),
+                pallet_assets::Call::<Runtime, Instance>::freeze {
+                    id: asset_id.into(),
+                    who: Runtime::Lookup::unlookup(account),
+                },
+            )?;
+        }
 
-		Ok(succeed(EvmDataWriter::new().write(true).build()))
-	}
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
+    }
 
-	fn thaw(
-		asset_id: AssetIdOf<Runtime, Instance>,
-		handle: &mut impl PrecompileHandle,
-	) -> EvmResult<PrecompileOutput> {
+    fn thaw(
+        asset_id: AssetIdOf<Runtime, Instance>,
+        handle: &mut impl PrecompileHandle,
+    ) -> EvmResult<PrecompileOutput> {
         let mut input = handle.read_input()?;
         input.expect_arguments(1)?;
 
         let account: H160 = input.read::<Address>()?.into();
 
-		// Build call with origin.
-		{
-			let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
-			let account = Runtime::AddressMapping::into_account_id(account);
+        // Build call with origin.
+        {
+            let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
+            let account = Runtime::AddressMapping::into_account_id(account);
 
-			// Dispatch call (if enough gas).
-			RuntimeHelper::<Runtime>::try_dispatch(
-				handle,
-				Some(origin).into(),
-				pallet_assets::Call::<Runtime, Instance>::thaw {
-					id: asset_id.into(),
-					who: Runtime::Lookup::unlookup(account),
-				},
-			)?;
-		}
+            // Dispatch call (if enough gas).
+            RuntimeHelper::<Runtime>::try_dispatch(
+                handle,
+                Some(origin).into(),
+                pallet_assets::Call::<Runtime, Instance>::thaw {
+                    id: asset_id.into(),
+                    who: Runtime::Lookup::unlookup(account),
+                },
+            )?;
+        }
 
-		Ok(succeed(EvmDataWriter::new().write(true).build()))
-	}
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
+    }
 
-	fn freeze_asset(
-		asset_id: AssetIdOf<Runtime, Instance>,
-		handle: &mut impl PrecompileHandle,
-	) -> EvmResult<PrecompileOutput> {
-		// Build call with origin.
-		{
-			let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
+    fn freeze_asset(
+        asset_id: AssetIdOf<Runtime, Instance>,
+        handle: &mut impl PrecompileHandle,
+    ) -> EvmResult<PrecompileOutput> {
+        // Build call with origin.
+        {
+            let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
 
-			// Dispatch call (if enough gas).
-			RuntimeHelper::<Runtime>::try_dispatch(
-				handle,
-				Some(origin).into(),
-				pallet_assets::Call::<Runtime, Instance>::freeze_asset { id: asset_id.into() },
-			)?;
-		}
+            // Dispatch call (if enough gas).
+            RuntimeHelper::<Runtime>::try_dispatch(
+                handle,
+                Some(origin).into(),
+                pallet_assets::Call::<Runtime, Instance>::freeze_asset {
+                    id: asset_id.into(),
+                },
+            )?;
+        }
 
-		Ok(succeed(EvmDataWriter::new().write(true).build()))
-	}
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
+    }
 
+    fn thaw_asset(
+        asset_id: AssetIdOf<Runtime, Instance>,
+        handle: &mut impl PrecompileHandle,
+    ) -> EvmResult<PrecompileOutput> {
+        // Build call with origin.
+        {
+            let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
 
-	fn thaw_asset(
-		asset_id: AssetIdOf<Runtime, Instance>,
-		handle: &mut impl PrecompileHandle,
-	) -> EvmResult<PrecompileOutput> {
-		// Build call with origin.
-		{
-			let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
+            // Dispatch call (if enough gas).
+            RuntimeHelper::<Runtime>::try_dispatch(
+                handle,
+                Some(origin).into(),
+                pallet_assets::Call::<Runtime, Instance>::thaw_asset {
+                    id: asset_id.into(),
+                },
+            )?;
+        }
 
-			// Dispatch call (if enough gas).
-			RuntimeHelper::<Runtime>::try_dispatch(
-				handle,
-				Some(origin).into(),
-				pallet_assets::Call::<Runtime, Instance>::thaw_asset { id: asset_id.into() },
-			)?;
-		}
+        // Build output.
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
+    }
 
-		// Build output.
-		Ok(succeed(EvmDataWriter::new().write(true).build()))
-	}
-
-	fn transfer_ownership(
-		asset_id: AssetIdOf<Runtime, Instance>,
-		handle: &mut impl PrecompileHandle,
-	) -> EvmResult<PrecompileOutput> {
+    fn transfer_ownership(
+        asset_id: AssetIdOf<Runtime, Instance>,
+        handle: &mut impl PrecompileHandle,
+    ) -> EvmResult<PrecompileOutput> {
         let mut input = handle.read_input()?;
         input.expect_arguments(1)?;
 
         let owner: H160 = input.read::<Address>()?.into();
 
-		// Build call with origin.
-		{
-			let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
-			let owner = Runtime::AddressMapping::into_account_id(owner);
+        // Build call with origin.
+        {
+            let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
+            let owner = Runtime::AddressMapping::into_account_id(owner);
 
-			// Dispatch call (if enough gas).
-			RuntimeHelper::<Runtime>::try_dispatch(
-				handle,
-				Some(origin).into(),
-				pallet_assets::Call::<Runtime, Instance>::transfer_ownership {
-					id: asset_id.into(),
-					owner: Runtime::Lookup::unlookup(owner),
-				},
-			)?;
-		}
+            // Dispatch call (if enough gas).
+            RuntimeHelper::<Runtime>::try_dispatch(
+                handle,
+                Some(origin).into(),
+                pallet_assets::Call::<Runtime, Instance>::transfer_ownership {
+                    id: asset_id.into(),
+                    owner: Runtime::Lookup::unlookup(owner),
+                },
+            )?;
+        }
 
-		Ok(succeed(EvmDataWriter::new().write(true).build()))
-	}
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
+    }
 
-	fn set_team(
-		asset_id: AssetIdOf<Runtime, Instance>,
-		handle: &mut impl PrecompileHandle,
-	) -> EvmResult<PrecompileOutput> {
+    fn set_team(
+        asset_id: AssetIdOf<Runtime, Instance>,
+        handle: &mut impl PrecompileHandle,
+    ) -> EvmResult<PrecompileOutput> {
         let mut input = handle.read_input()?;
         input.expect_arguments(3)?;
 
@@ -757,26 +765,26 @@ where
         let admin: H160 = input.read::<Address>()?.into();
         let freezer: H160 = input.read::<Address>()?.into();
 
-		// Build call with origin.
-		{
-			let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
-			let issuer = Runtime::AddressMapping::into_account_id(issuer);
-			let admin = Runtime::AddressMapping::into_account_id(admin);
-			let freezer = Runtime::AddressMapping::into_account_id(freezer);
+        // Build call with origin.
+        {
+            let origin = Runtime::AddressMapping::into_account_id(handle.context().caller);
+            let issuer = Runtime::AddressMapping::into_account_id(issuer);
+            let admin = Runtime::AddressMapping::into_account_id(admin);
+            let freezer = Runtime::AddressMapping::into_account_id(freezer);
 
-			// Dispatch call (if enough gas).
-			RuntimeHelper::<Runtime>::try_dispatch(
-				handle,
-				Some(origin).into(),
-				pallet_assets::Call::<Runtime, Instance>::set_team {
-					id: asset_id.into(),
-					issuer: Runtime::Lookup::unlookup(issuer),
-					admin: Runtime::Lookup::unlookup(admin),
-					freezer: Runtime::Lookup::unlookup(freezer),
-				},
-			)?;
-		}
+            // Dispatch call (if enough gas).
+            RuntimeHelper::<Runtime>::try_dispatch(
+                handle,
+                Some(origin).into(),
+                pallet_assets::Call::<Runtime, Instance>::set_team {
+                    id: asset_id.into(),
+                    issuer: Runtime::Lookup::unlookup(issuer),
+                    admin: Runtime::Lookup::unlookup(admin),
+                    freezer: Runtime::Lookup::unlookup(freezer),
+                },
+            )?;
+        }
 
-		Ok(succeed(EvmDataWriter::new().write(true).build()))
-	}
+        Ok(succeed(EvmDataWriter::new().write(true).build()))
+    }
 }
