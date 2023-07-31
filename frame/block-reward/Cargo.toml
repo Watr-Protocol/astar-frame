@@ -10,7 +10,7 @@ repository.workspace = true
 
 [dependencies]
 parity-scale-codec = { workspace = true }
-serde = { workspace = true }
+serde = { workspace = true, optional = true }
 
 frame-support = { workspace = true }
 frame-system = { workspace = true }
@@ -33,7 +33,7 @@ std = [
 	"sp-core/std",
 	"scale-info/std",
 	"sp-std/std",
-	"serde/std",
+	"serde",
 	"frame-support/std",
 	"frame-system/std",
 	"pallet-timestamp/std",
