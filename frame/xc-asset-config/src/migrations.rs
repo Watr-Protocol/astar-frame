@@ -22,6 +22,9 @@ use frame_support::{dispatch::GetStorageVersion, log, pallet_prelude::*, traits:
 use sp_std::{marker::PhantomData, vec::Vec};
 use xcm::IntoVersion;
 
+#[cfg(feature = "try-runtime")]
+use sp_runtime::TryRuntimeError;
+
 pub struct MigrationXcmV3<T: Config>(PhantomData<T>);
 impl<T: Config> OnRuntimeUpgrade for MigrationXcmV3<T> {
     fn on_runtime_upgrade() -> Weight {
@@ -86,7 +89,7 @@ impl<T: Config> OnRuntimeUpgrade for MigrationXcmV3<T> {
     }
 
     #[cfg(feature = "try-runtime")]
-    fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+    fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
         assert!(Pallet::<T>::on_chain_storage_version() < 2);
         let id_to_location_entries: Vec<_> = AssetIdToLocation::<T>::iter().collect();
 
@@ -94,9 +97,10 @@ impl<T: Config> OnRuntimeUpgrade for MigrationXcmV3<T> {
     }
 
     #[cfg(feature = "try-runtime")]
-    fn post_upgrade(state: Vec<u8>) -> Result<(), &'static str> {
+    fn post_upgrade(state: Vec<u8>) -> Result<(), TryRuntimeError> {
         assert_eq!(Pallet::<T>::on_chain_storage_version(), 2);
 
+        use sp_runtime::TryRuntimeError;
         use xcm::VersionedMultiLocation;
         let legacy_id_to_location_entries: Vec<(T::AssetId, VersionedMultiLocation)> =
             Decode::decode(&mut state.as_ref())
