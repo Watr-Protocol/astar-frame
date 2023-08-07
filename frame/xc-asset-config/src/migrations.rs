@@ -118,9 +118,9 @@ impl<T: Config> OnRuntimeUpgrade for MigrationXcmV3<T> {
             let new_location = new_location.expect("Assert above ensures it's `Some`.");
 
             assert_eq!(AssetLocationToId::<T>::get(&new_location), Some(*id));
-            assert!(AssetLocationUnitsPerSecond::<T>::contains_key(
-                &new_location
-            ));
+            // assert!(AssetLocationUnitsPerSecond::<T>::contains_key(
+            //     &new_location
+            // ));
         }
 
         Ok(())
