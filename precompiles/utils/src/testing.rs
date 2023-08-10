@@ -20,7 +20,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Utils.  If not, see <http://www.gnu.org/licenses/>.
 use super::*;
-use core::assert_matches::assert_matches;
 use fp_evm::{
     ExitReason, ExitSucceed, PrecompileOutput, PrecompileResult, PrecompileSet, Transfer,
 };
@@ -199,13 +198,13 @@ impl PrecompileHandle for MockHandle {
 
     fn record_external_cost(
         &mut self,
-        ref_time: Option<u64>,
-        proof_size: Option<u64>,
+        _ref_time: Option<u64>,
+        _proof_size: Option<u64>,
     ) -> Result<(), ExitError> {
         Ok(())
     }
 
-    fn refund_external_cost(&mut self, ref_time: Option<u64>, proof_size: Option<u64>) {}
+    fn refund_external_cost(&mut self, _ref_time: Option<u64>, _proof_size: Option<u64>) {}
 
     fn remaining_gas(&self) -> u64 {
         self.gas_limit - self.gas_used
@@ -379,11 +378,10 @@ impl<'p, P: PrecompileSet> PrecompilesTester<'p, P> {
     /// Take a closure allowing to perform custom matching on the output.
     pub fn execute_reverts(mut self, check: impl Fn(&[u8]) -> bool) {
         let res = self.execute();
-        assert_matches!(
-            res,
-            Some(Err(PrecompileFailure::Revert { output, ..}))
-                if check(&output)
-        );
+        match res {
+            Some(Err(PrecompileFailure::Revert { output, ..})) if check(&output) => {},
+            _ => panic!("Revert could not be successfully executed")
+        }
         self.assert_optionals();
     }
 
